@@ -13,6 +13,7 @@ https://sajidnisar.github.io/posts/python_kinematics_dh#Evaluation-of-tip-positi
 #input dos angulos para calculo da fk deve ser exatamente igual ao colocado no peter corke - matlab
 
 from math import *
+import numpy as np
 
 
 #a ordem dos parametros na matriz é theta d alpha a
@@ -68,35 +69,21 @@ R3 = [[0,0,0,0],
       [0,0,0,0],
       [0,0,0,0]]
 
-def prod_matrix(X, Y):
-    #print "\n\n matriz x:", X
-    #print "\n\n matriz y:", Y
-    result = [[0,0,0,0],
-              [0,0,0,0],
-              [0,0,0,0],
-              [0,0,0,0]]
-    # iterate through rows of X
-    for i in range(len(X)):
-        # iterate through columns of Y
-        for j in range(len(Y[0])):
-            # iterate through rows of Y
-            for k in range(len(Y)):
-                result[i][j] += X[i][k] * Y[k][j]
-    #print "\n\n result:", result
-    return result
     
 
-def fowardk(theta1, theta2, theta3, theta4, theta5):
+def forwardk(theta1, theta2, theta3, theta4, theta5):
     #convert to radian
     #com offset inicial desconsiderado
     theta1 = radians(theta1) + (-pi/2)
     theta2 = radians(theta2) + (-pi/2)
-    theta3 = radians(theta3) + (75*pi/180)
+    theta3 = radians(theta3) + (75*pi/2)
     #theta1 = radians(theta1)
     #theta2 = radians(theta2)
     #theta3 = radians(theta3)
     #global result
     global PJ_DH
+    
+    # TODO: tratar o theta5!!!
     
     #matrizes do tipo 4x4
 
@@ -145,20 +132,20 @@ def fowardk(theta1, theta2, theta3, theta4, theta5):
     
     #R0 = prod_matrix(Mt1, Mt1) 
     
-    R1 = prod_matrix(matrixArray[0],matrixArray[1])
+    R1 = np.matmul(matrixArray[0],matrixArray[1])
     
     #print "\n\n R1: ", R1
     
-    R2 = prod_matrix(R1,matrixArray[2])
+    R2 = np.matmul(R1,matrixArray[2])
     
     #print "\n\n R2: ", R2
     
-    R3 = prod_matrix(R2,matrixArray[3])
+    R3 = np.matmul(R2,matrixArray[3])
     #print "\n\n R3: ", R3
     
     #print "\n\n R4: ", R4
     
-    print "\n X:", round(R3[0][3],3), " Y: ", round(R3[1][3],3), " Z: ", round(R3[2][3],3)
+    print "\n X:", round(R3[0][3],3), " Y: ", round(R3[1][3],3), " Z: ", round(R3[2][3],3), "Abertura da garra de: ", theta5, "°"
     print "\n"
     
     #print R0
@@ -170,7 +157,7 @@ def fowardk(theta1, theta2, theta3, theta4, theta5):
     
 def main():
     
-    fowardk(-60, 45, -50, 0)
+    forwardk(-60, 45, -50, 0)
     
 if __name__ == '__main__':
     
