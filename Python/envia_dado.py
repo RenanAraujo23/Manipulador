@@ -8,7 +8,7 @@ Programa de teste para as demandas - teste atual: demanda de posicao
 
 import serial
 from struct import pack
-from dh_trajectory_nosymbol import *
+from novo_dh_trajectory_nosymbol import *
 
 porta='/dev/ttyUSB0'
 baud_rate=115200
@@ -153,50 +153,104 @@ def demanda_motor(): #Depois do "metodo" das perguntas, utilizar o parser
     #global flag_rec
     #if not flag_rec:
     global resp
+    motor_num = 0
     msg1 = create_msg()
     angs = [0,0,0,0,0]
-    while resp != 'n' :
-        motor_num = raw_input("\nQual motor deseja movimentar? (1-Shoulder, 2-Slew, 3-Elbow, 4-Jaw Rotate, 5-Jaw O/C) ")
+    while resp != 'n' and motor_num != 6 :
+        motor_num = raw_input("\nQual motor deseja movimentar? (1-Shoulder, 2-Slew, 3-Elbow, 4-Jaw Rotate, 5-Jaw O/C 6-Zerar todos) ")
         motor_num = int(motor_num)
-        motor_change = 9*(int(motor_num)-1) + 5
-        demand = raw_input("\nQual sera a demanda? (5-Posição) ")
-        msg1[motor_change] = int(demand) #0x05 = 5?
-        if demand == '5':
-            ang = raw_input("\nQual o angulo desejado? ")
-            ang = int(ang)
-            angs[motor_num - 1] = ang
+        if motor_num == 6:
+            angs = [0,0,0,0,0]
+            pos = 0
+            demand = 5
+            
+            motor_change = 9*(int(1)-1) + 5
+            msg1[motor_change] = int(demand)
+            lsb = pos & 0xFF
+            pos >>=8
+            msb = pos
+            msg1[motor_change+1] = msb
+            msg1[motor_change+2] = lsb
+            
+            motor_change = 9*(int(2)-1) + 5
+            msg1[motor_change] = int(demand)
+            pos = 0
+            lsb = pos & 0xFF
+            pos >>=8
+            msb = pos
+            msg1[motor_change+1] = msb
+            msg1[motor_change+2] = lsb
+            
+            motor_change = 9*(int(3)-1) + 5
+            msg1[motor_change] = int(demand)
+            pos = 0
+            lsb = pos & 0xFF
+            pos >>=8
+            msb = pos
+            msg1[motor_change+1] = msb
+            msg1[motor_change+2] = lsb
+            
+            motor_change = 9*(int(4)-1) + 5
+            msg1[motor_change] = int(demand)
+            pos = 0
+            lsb = pos & 0xFF
+            pos >>=8
+            msb = pos
+            msg1[motor_change+1] = msb
+            msg1[motor_change+2] = lsb
+            
+            motor_change = 9*(int(5)-1) + 5
+            msg1[motor_change] = int(demand)
+            pos = 0
+            lsb = pos & 0xFF
+            pos >>=8
+            msb = pos
+            msg1[motor_change+1] = msb
+            msg1[motor_change+2] = lsb
+        else:
+            motor_change = 9*(int(motor_num)-1) + 5
+            demand = raw_input("\nQual sera a demanda? (5-Posição) ")
+            msg1[motor_change] = int(demand) #0x05 = 5?
+            if demand == '5':
+                ang = raw_input("\nQual o angulo desejado? ")
+                ang = int(ang)
+                angs[motor_num - 1] = ang
             #print(ang)
         #converter o angulo desejado em posicao
-        pos = 0
+            pos = 0
         #print type(motor_num)
-        if motor_num == 1:
-            pos = (20200*ang)/90
+            if motor_num == 1:
+                pos = (20200*ang)/90
             #print "posicao shoulder", pos
-        elif motor_num == 2:
-            pos = (20200*ang)/120
-        elif motor_num == 3:
-            pos = (20320*ang)/145
-        elif motor_num == 4:
-            pos = (1770*ang)/360
-        elif motor_num == 5:
-            pos = (3960*ang)/140
+            elif motor_num == 2:
+                pos = (20200*ang)/120
+            elif motor_num == 3:
+                pos = (20320*ang)/145
+            elif motor_num == 4:
+                pos = (1800*ang)/360
+            elif motor_num == 5:
+                pos = (3900*ang)/140
         #print "posicao", pos
-        lsb = pos & 0xFF
+            lsb = pos & 0xFF
         #print "lsb", lsb
-        pos >>=8
-        msb = pos
-        msg1[motor_change+1] = msb
-        msg1[motor_change+2] = lsb
+            pos >>=8
+            msb = pos
+            msg1[motor_change+1] = msb
+            msg1[motor_change+2] = lsb
         #print msb, lsb
-        resp = raw_input("\nDeseja movimentar algum outro motor? (s ou n) ") #podemos fazer um while
+            resp = raw_input("\nDeseja movimentar algum outro motor? (s ou n) ") #podemos fazer um while
     #if resp == 's':
     #    flag_rec = True
     #    demanda_motor()
     #else:
     subs_msg = checksum(msg1)
+    
+    
+    
+    
     while(1):
-        print angs[0], " ",  angs[1], " ", angs[2]
-        fowardk(angs[1],angs[0],angs[2],angs[3],angs[4])
+        print angs[0], " ",  angs[1], " ", angs[2], " ", angs[3], " ", angs[4]
+        forwardk(angs[1],angs[0],angs[2],angs[3],angs[4])
         send_msg(subs_msg)
     
 def zero():
