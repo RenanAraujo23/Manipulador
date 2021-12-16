@@ -145,7 +145,7 @@ def create_msg():
            # demand_volt_CW,
            # msb_voltage,
            # lsb_voltage,
-           demand_stop,
+           demand_pos,
            msb_zero,
            lsb_zero,
            msb_speed_lim,
@@ -158,7 +158,7 @@ def create_msg():
            # demand_volt_CCW,
            # msb_voltage,
            # lsb_voltage,
-           demand_stop,
+           demand_pos,
            msb_zero,
            lsb_zero,
            msb_speed_lim,
@@ -191,28 +191,52 @@ def send_target_pos(Obj_porta, target_pos):
     # Send desired joint positions for manipulator
     #print "Send target joint position: "
     new_msg = create_msg()
+    #print target_pos
 
-    for motor_num in range(3):
+    for motor_num in range(4):
         motor_change = 9 * motor_num + 5  # byte to change in the new message
+        #print "\n\n\nMotorChange\n"
+        #print motor_change
         pos = target_pos[motor_num]
+        #print "\n\nMotorNum"
+        #print motor_num
+        #print "\n\nPos"
+        #print pos
         lsb = pos & 0xFF
         msb = (pos >> 8) & 0xFF
+        #print "\n\n"
+        #print lsb
+        #print msb
         new_msg[motor_change + 1] = msb
         new_msg[motor_change + 2] = lsb
+        
+        #print "\n\nmsb"
+        #print new_msg[9 * 3 + 5 + 1]
+        
+        #print "\n\nlsb"
+        #print new_msg[9 * 3 + 5 + 2]
         #print motor_num + 1, pos
+        
+    #print "\n\n"
+    #print new_msg
+    #print "\n\n"
 
     final_msg = checksum(new_msg)
+    
+    #print "\n\n"
+    #print final_msg
+    #print "\n\n"
 
     send_msg(final_msg, Obj_porta)
 
 
 def get_actual_pos(msg):
     # Get actual joint angle positions from received message
-	pos = [0, 0, 0]
+	pos = [0, 0, 0, 0]
 
 	#print "Read actual joint position: "
 
-	for motor_num in range(3):
+	for motor_num in range(4):
 		pos[motor_num] = msg[motor_num * 6 + 5]
 		#print motor_num + 1, pos[motor_num]
 
@@ -220,8 +244,8 @@ def get_actual_pos(msg):
 
 def get_actual_speed(msg):
     # Get actual joint speed from received message
-    spd = [0,0,0]
-    for motor_num in range(3):
+    spd = [0,0,0,0]
+    for motor_num in range(4):
         spd[motor_num] = msg[motor_num * 6 + 6]
     #print "Joints' speed: ", spd
     return spd
@@ -299,11 +323,12 @@ def ik_solver(ee_pos):
 
 
 def convert_rad_to_ad(pos_rad):
-    pos = [0, 0, 0]
+    pos = [0, 0, 0, 0]
 
     pos[0] = int((20320 * degrees(pos_rad[0])) / 90)
     pos[1] = int((20320 * degrees(pos_rad[1])) / 120)
     pos[2] = int((20320 * degrees(pos_rad[2])) / 145)
+    pos[3] = int((2400 * (pos_rad[3])) / 360)
 
     return pos
 
@@ -323,10 +348,10 @@ def evaluate_speed(spd):
     tolerance = 1 # defines 10 rpm of tolerance
     joints = 0
     #print "Joint Speeds: ", spd
-    for i in range(3):
+    for i in range(4):
         if spd[i] < tolerance: # evaluate if speed of each joint is less than tolerance
             joints += 1
-            if joints == 3: # all joints stopped
+            if joints == 4: # all joints stopped
                 print "Manipulator arrived at current point"
                 return True
 
@@ -336,7 +361,7 @@ def main():
     Obj_porta = open_serial()
 
     # Send the robot to initial position
-    target_pos = [0, 0, 0]  # unidade: AD
+    target_pos = [0, 0, 0, 0]  # unidade: AD
     send_target_pos(Obj_porta, target_pos) # enviar posição desejada
     received_msg = read_msg(Obj_porta)
     if received_msg is not None:
@@ -356,6 +381,7 @@ def main():
     count = 0
     
     while (1):        
+        target_pos_rad = [0, 0, 0, 0]
         #print "Point: ", pt
 
         # Compute joint angles from target EE pos (using IK)
@@ -365,15 +391,22 @@ def main():
         opt_result = ik_solver(ee_pos[pt])
 
         # Retrieve only angle values from the optimization result
-        target_pos_rad = [opt_result.x[1], opt_result.x[0], opt_result.x[2]]
+        target_pos_rad[0] = opt_result.x[1]
+        target_pos_rad[1] = opt_result.x[0]
+        target_pos_rad[2] = opt_result.x[2]
+        target_pos_rad[3] = ee_pos[pt][3]
 
         # Convert target joint angles from degrees to "pulses"
         target_pos = convert_rad_to_ad(target_pos_rad)
         #print  "Target joint position (ad):", target_pos
 
         # Send target position (joint angles)
-        target_pos = [0, 0, 0]
+        #target_pos = [0, 0, 0]
         #target_pos = [6773, 5080, 4204]  # unidade: AD
+        #print "\n\n"
+        #print target_pos
+        #print "\n\n"
+        
         send_target_pos(Obj_porta, target_pos)
 
         # Read data from manipulator
@@ -383,8 +416,12 @@ def main():
             pos_now = get_actual_pos(received_msg)
 
             # Check if the arm has started to move
-            for i in range(3):
+            for i in range(4):
                 if abs(pos_now[i] - pos_before[i]) > 10:
+                    print "\n\n"
+                    print pos_now
+                    print pos_before
+                    print "\n\n"
                     moving = True
 
         count += 1;
@@ -394,7 +431,7 @@ def main():
             spd = get_actual_speed(received_msg)
             #print pos_before, pos_now, spd
 
-            if (spd[0] == 0) and (spd[1] == 0) and (spd[2] == 0):   # ver um jeito melhor de fazer isso...
+            if (spd[0] == 0) and (spd[1] == 0) and (spd[2] == 0) and (spd[3] == 0):   # ver um jeito melhor de fazer isso...
                 point_reached = True
                 moving = False	
 
